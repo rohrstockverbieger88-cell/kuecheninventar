@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Küchen-Chef Cloud v24</title>
+    <title>Küchen-Chef Cloud v25</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -35,14 +35,14 @@
         .shop-check { width: 35px; height: 35px; accent-color: var(--accent); }
         .finish-bar { padding: 15px; background: #fff; border-top: 2px solid var(--accent); display: flex; flex-direction: column; gap: 10px; }
         .btn-danger { background: #fee2e2; color: var(--danger); border: none; border-radius: 10px; padding: 12px; font-weight: bold; }
-        #suggestion-box { background: white; border-radius: 10px; display: none; margin-bottom: 10px; border: 1px solid #ddd; }
+        #suggestion-box { background: white; border-radius: 10px; display: none; margin-bottom: 10px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; }
         .sugg-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <header><h1>KÜCHEN-CHEF CLOUD</h1></header>
+    <header><h1>KÜCHEN-CHEF CLOUD v25</h1></header>
 
     <div class="main-content">
         <div class="tile" style="flex: 2;"><h2>⭐ FAVORITEN</h2><div id="fav-list" class="scroll-area"></div></div>
@@ -83,7 +83,7 @@
             </div>
             <label style="display:flex; align-items:center; gap:10px; margin:15px 0;"><input type="checkbox" id="add-is-fav" style="width:25px; height:25px;"> ⭐ Favorit</label>
             <label style="display:flex; align-items:center; gap:10px;"><input type="checkbox" id="add-has-limit" onchange="document.getElementById('l-box').style.display=this.checked?'block':'none'" style="width:25px; height:25px;"> ⚠️ Melden bei Knappheit</label>
-            <div id="l-box" style="display:none; margin-top:10px;"><label>Menge <=</label><input type="number" id="add-limit-val"></div>
+            <div id="l-box" style="display:none; margin-top:10px;"><label>Warnung bei Menge <=</label><input type="number" id="add-limit-val"></div>
             <button class="btn-nav btn-primary" style="width:100%; margin-top:20px;" onclick="saveItem()">SPEICHERN</button>
         </div>
     </div>
@@ -104,7 +104,7 @@
 </div>
 
 <script>
-    // --- FIREBASE CONFIG ---
+    // --- FIREBASE CONFIG (Deine Daten) ---
     const firebaseConfig = {
         apiKey: "AIzaSyAOemsGYyQJQl4XgQd_IL2XookAdfkbtk0",
         authDomain: "kuecheninventa.firebaseapp.com",
@@ -119,11 +119,10 @@
 
     let items = [], shoppingList = [], recentIds = [];
 
-    // SYNC MIT FEHLERANZEIGE
+    // SYNC
     function sync() {
         items.sort((a,b) => a.name.localeCompare(b.name, 'de'));
-        db.ref('kitchen_data').set({ items, shoppingList, recentIds })
-          .catch(err => alert("FEHLER BEIM SPEICHERN: " + err.message));
+        db.ref('kitchen_data').set({ items, shoppingList, recentIds });
     }
 
     db.ref('kitchen_data').on('value', snap => {
@@ -143,12 +142,18 @@
         document.getElementById('edit-id').value = "";
         document.getElementById('context-mode').value = "inv";
         document.getElementById('add-name').value = "";
+        document.getElementById('add-qty').value = "1";
+        document.getElementById('add-unit').value = "St";
+        document.getElementById('add-is-fav').checked = false;
+        document.getElementById('add-has-limit').checked = false;
+        document.getElementById('l-box').style.display = "none";
         document.getElementById('add-title').innerText = "Neu anlegen";
         openPage('add-page');
     }
 
     function prepShopAdd() {
-        const n = document.getElementById('manual-shop-name').value;
+        const n = document.getElementById('manual-shop-name').value.trim();
+        if(!n) return;
         prepAdd();
         document.getElementById('add-name').value = n;
         document.getElementById('context-mode').value = "shop";
@@ -167,50 +172,74 @@
         if(!name) return;
 
         if(mode === "shop") {
+            // In Einkaufsliste speichern
             shoppingList.push({ id: Date.now(), name, qty, unit, fav, limit, bought: false });
             document.getElementById('manual-shop-name').value = "";
-            sync(); closePage('add-page');
+            sync();
+            closePage('add-page');
+            openPage('shopping-page');
         } else {
+            // Normales Inventar speichern
             if(id) {
                 const idx = items.findIndex(i => i.id == id);
                 if(idx !== -1) items[idx] = { id, name, qty, unit, fav, limit };
             } else {
                 items.push({ id: Date.now(), name, qty, unit, fav, limit });
             }
-            sync(); closePage('add-page');
+            sync();
+            closePage('add-page');
         }
     }
 
     function finishShopping() {
         const bought = shoppingList.filter(s => s.bought);
         if(!bought.length) return alert("Nichts abgehakt!");
-        if(confirm("Bestand aktualisieren?")) {
+        
+        if(confirm("Abgehakte Artikel in den Bestand übernehmen?")) {
             bought.forEach(b => {
                 const ex = items.find(i => i.name.toLowerCase() === b.name.toLowerCase());
-                if(ex) { ex.qty += b.qty; ex.fav = b.fav; ex.limit = b.limit; }
-                else { items.push({ id: Date.now()+Math.random(), name: b.name, qty: b.qty, unit: b.unit, fav: b.fav, limit: b.limit }); }
+                if(ex) {
+                    ex.qty = (parseFloat(ex.qty) || 0) + parseFloat(b.qty);
+                    ex.fav = b.fav;
+                    ex.limit = b.limit;
+                } else {
+                    items.push({ id: Date.now() + Math.random(), name: b.name, qty: b.qty, unit: b.unit, fav: b.fav, limit: b.limit });
+                }
             });
+            // Entferne Gekauftes von der Liste
             shoppingList = shoppingList.filter(s => !s.bought);
-            sync(); closePage('shopping-page');
+            sync();
+            alert("Einkauf erfolgreich verbucht!");
+            closePage('shopping-page');
         }
     }
 
     function renderShopping() {
         const c = document.getElementById('shopping-items-container');
+        if(!c) return;
         c.innerHTML = shoppingList.map((s, i) => `
             <div class="shopping-row">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <b>${s.name}</b>
+                    <b style="font-size:1.1rem;">${s.name}</b>
                     <input type="checkbox" class="shop-check" ${s.bought?'checked':''} onchange="shoppingList[${i}].bought=!shoppingList[${i}].bought; sync();">
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-                    <button style="padding:10px; border-radius:8px; border:none;" onclick="shoppingList[${i}].qty=Math.max(1, shoppingList[${i}].qty-1); sync();">-</button>
-                    <span style="font-weight:bold; align-self:center;">${s.qty} ${s.unit}</span>
-                    <button style="padding:10px; border-radius:8px; border:none;" onclick="shoppingList[${i}].qty++; sync();">+</button>
-                    <button style="background:none; border:none; margin-left:10px;" onclick="shoppingList.splice(${i},1); sync();">🗑️</button>
+                    <button style="width:45px; height:45px; border-radius:8px; border:none; font-size:1.2rem;" onclick="shoppingList[${i}].qty=Math.max(1, shoppingList[${i}].qty-1); sync();">-</button>
+                    <span style="font-weight:bold; align-self:center; min-width:50px; text-align:center;">${s.qty} ${s.unit}</span>
+                    <button style="width:45px; height:45px; border-radius:8px; border:none; font-size:1.2rem;" onclick="shoppingList[${i}].qty++; sync();">+</button>
+                    <button style="background:none; border:none; margin-left:10px; font-size:1.2rem;" onclick="shoppingList.splice(${i},1); sync();">🗑️</button>
                 </div>
             </div>
-        `).join('') || '<p style="text-align:center;">Leer</p>';
+        `).join('') || '<p style="text-align:center; color:grey;">Liste ist leer</p>';
+    }
+
+    function updateQty(id, delta) {
+        const it = items.find(i => i.id == id);
+        if(it) {
+            it.qty = Math.max(0, (parseFloat(it.qty) || 0) + delta);
+            if(delta < 0) recentIds = [id, ...recentIds.filter(r => r != id)].slice(0, 5);
+            sync();
+        }
     }
 
     function createRow(item, allList = false) {
@@ -218,18 +247,9 @@
             <div class="item-info-btn" onclick="openEdit('${item.id}')"><b>${item.name}</b><small>${item.qty} ${item.unit} ${item.fav?'⭐':''}</small></div>
             <div class="controls">
                 <button onclick="updateQty('${item.id}', -1)">-</button><button onclick="updateQty('${item.id}', 1)">+</button>
-                ${allList?`<button style="background:none; border:none; color:red;" onclick="items=items.filter(x=>x.id!=${item.id}); sync();">✕</button>`:''}
+                ${allList?`<button style="background:none; border:none; color:red; font-size:1.2rem;" onclick="if(confirm('Löschen?')){items=items.filter(x=>x.id!='${item.id}'); sync();}">✕</button>`:''}
             </div>
         </div>`;
-    }
-
-    function updateQty(id, delta) {
-        const it = items.find(i => i.id == id);
-        if(it) {
-            it.qty = Math.max(0, it.qty + delta);
-            if(delta < 0) recentIds = [id, ...recentIds.filter(r => r != id)].slice(0, 5);
-            sync();
-        }
     }
 
     function openEdit(id) {
@@ -257,14 +277,24 @@
     }
 
     function renderAll() { document.getElementById('all-items-container').innerHTML = items.map(i => createRow(i, true)).join(''); }
-    function cancelAdd() { closePage('add-page'); }
+    function cancelAdd() { if(document.getElementById('context-mode').value==="shop") openPage('shopping-page'); closePage('add-page'); }
+
     function doSugg(v) {
         const b = document.getElementById('suggestion-box');
         if(!v) { b.style.display='none'; return; }
         const f = items.filter(i => i.name.toLowerCase().includes(v.toLowerCase()));
-        b.style.display = f.length ? 'block' : 'none';
-        b.innerHTML = f.map(i => `<div class="sugg-item" onclick="shoppingList.push({id:Date.now(), name:'${i.name}', qty:1, unit:'${i.unit}', fav:${i.fav}, limit:${i.limit}, bought:false}); document.getElementById('manual-shop-name').value=''; sync();">${i.name}</div>`).join('');
+        if(!f.length) { b.style.display='none'; return; }
+        b.style.display = 'block';
+        b.innerHTML = f.map(i => `<div class="sugg-item" onclick="addSugg('${i.name}', '${i.unit}', ${i.fav}, ${i.limit})">${i.name}</div>`).join('');
     }
+
+    function addSugg(name, unit, fav, limit) {
+        shoppingList.push({id:Date.now(), name, qty:1, unit, fav, limit, bought:false});
+        document.getElementById('manual-shop-name').value='';
+        document.getElementById('suggestion-box').style.display='none';
+        sync();
+    }
+
     function exportCSV() {
         let csv = "Name;Bestand;Einheit;Favorit;Limit\n";
         items.forEach(i => csv += `${i.name};${i.qty};${i.unit};${i.fav?'JA':'NEIN'};${i.limit||'-'}\n`);
