@@ -3,116 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Küchen-Chef PRO v30</title>
+    <title>Küchen-Chef PRO v31</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
     <style>
         :root { --bg: #f1f5f9; --primary: #4f46e5; --danger: #ef4444; --accent: #10b981; --secondary: #64748b; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #222; height: 100vh; width: 100vw; overflow: hidden; display: flex; }
         #app-container { width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        header { padding: 1.5vh 4vw; background: white; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        
+        header { padding: 15px; background: white; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: center; align-items: center; flex-shrink: 0; }
         h1 { margin: 0; font-size: 1.4rem; color: var(--primary); font-weight: 800; }
+        
         .main-content { flex: 1; padding: 12px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; }
         .tile { background: white; border-radius: 16px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; flex-direction: column; min-height: 0; }
         .tile h2 { margin: 0 0 8px 0; font-size: 0.8rem; color: var(--secondary); text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
+        
         .scroll-area { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
-        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-        .item-info-btn { flex: 1; background: none; border: none; text-align: left; padding: 10px 5px; display: flex; flex-direction: column; font-family: inherit; cursor: pointer; color: inherit; }
+        
+        /* Zeilen-Styling */
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f5f9; width: 100%; }
+        .item-info-clickable { flex: 1; display: flex; flex-direction: column; cursor: pointer; padding: 5px; }
+        .item-info-clickable b { font-size: 1.1rem; pointer-events: none; }
+        .item-info-clickable small { color: var(--secondary); pointer-events: none; }
+        
         .controls { display: flex; gap: 12px; align-items: center; }
-        .controls button { width: 50px; height: 45px; border: none; background: #f1f5f9; border-radius: 10px; font-size: 1.4rem; font-weight: bold; color: var(--primary); }
+        .controls button { width: 50px; height: 50px; border: none; background: #f1f5f9; border-radius: 12px; font-size: 1.5rem; font-weight: bold; color: var(--primary); cursor: pointer; }
+        
         .bottom-bar { padding: 15px; background: white; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; flex-shrink: 0; }
-        .btn-nav { flex: 1; padding: 16px; border-radius: 15px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; text-align: center; }
+        .btn-nav { flex: 1; padding: 18px; border-radius: 15px; border: none; font-weight: bold; font-size: 1rem; cursor: pointer; text-align: center; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-shopping { background: var(--accent); color: white; }
-        .page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); transform: translateX(100%); transition: transform 0.2s ease-out; z-index: 4000; display: flex; flex-direction: column; }
-        .page.active { transform: translateX(0); }
+        
+        /* Seiten-System */
+        .page { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); transform: translateX(100%); transition: transform 0.25s ease; z-index: 4000; display: flex; flex-direction: column; visibility: hidden; }
+        .page.active { transform: translateX(0); visibility: visible; }
         .page-header { padding: 15px; background: white; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-        input, select { padding: 12px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1rem; margin-bottom: 10px; width: 100%; }
-        .shopping-row { background: white; padding: 12px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .shop-check { width: 35px; height: 35px; accent-color: var(--accent); cursor: pointer; }
+        .page-body { flex: 1; overflow-y: auto; padding: 15px; }
+        
+        input, select { padding: 15px; border: 1px solid #cbd5e1; border-radius: 12px; font-size: 1rem; margin-bottom: 12px; width: 100%; }
+        .shopping-row { background: white; padding: 15px; border-radius: 16px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+        .shop-check { width: 40px; height: 40px; accent-color: var(--accent); cursor: pointer; }
+        
         .finish-bar { padding: 15px; background: #fff; border-top: 2px solid var(--accent); display: flex; flex-direction: column; gap: 10px; flex-shrink: 0; }
-        .btn-danger { background: #fee2e2; color: var(--danger); border: none; border-radius: 10px; padding: 12px; font-weight: bold; cursor: pointer; }
-        #suggestion-box { background: white; border-radius: 10px; display: none; margin-bottom: 10px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; z-index: 50; }
-        .sugg-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .btn-danger { background: #fee2e2; color: var(--danger); border: none; border-radius: 12px; padding: 15px; font-weight: bold; cursor: pointer; }
+        
+        #suggestion-box { background: white; border-radius: 12px; display: none; margin-bottom: 15px; border: 1px solid #ddd; max-height: 200px; overflow-y: auto; z-index: 50; }
+        .sugg-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <header><h1>KÜCHEN-CHEF v30</h1></header>
+    <header><h1>KÜCHEN-CHEF v31</h1></header>
 
     <div class="main-content">
         <div class="tile" style="flex: 2;"><h2>⭐ FAVORITEN</h2><div id="fav-list" class="scroll-area"></div></div>
-        <div class="tile" style="flex: 2;"><h2>🕒 ZULETZT ENTNOMMEN</h2><div id="recent-list" class="scroll-area"></div></div>
+        <div class="tile" style="flex: 2;"><h2>🕒 ZULETZT</h2><div id="recent-list" class="scroll-area"></div></div>
         <div id="warn-tile" class="tile" style="display:none; border-left: 8px solid var(--danger); flex: 1.2;">
-            <h2 style="color:var(--danger);">⚠️ BESTAND KNAPP</h2><div id="warn-list" class="scroll-area"></div>
+            <h2 style="color:var(--danger);">⚠️ KNAPP</h2><div id="warn-list" class="scroll-area"></div>
         </div>
     </div>
 
     <div class="bottom-bar">
-        <button class="btn-nav btn-shopping" id="nav-shopping">🛒 EINKAUF</button>
-        <button class="btn-nav btn-primary" id="nav-inventory">📦 ABLAGE</button>
+        <button class="btn-nav btn-shopping" id="btn-go-shop">🛒 EINKAUF</button>
+        <button class="btn-nav btn-primary" id="btn-go-inv">📦 ABLAGE</button>
     </div>
 
-    <div id="shopping-page" class="page">
-        <div class="page-header"><h2>Einkaufsliste</h2><button onclick="closePage('shopping-page')">Zurück</button></div>
+    <div id="page-shopping" class="page">
+        <div class="page-header"><h2>Einkaufsliste</h2><button class="btn-close" data-target="page-shopping">Zurück</button></div>
         <div class="page-body">
             <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                <input type="text" id="manual-shop-name" placeholder="Name...">
-                <button id="add-manual-shop-btn" style="background:var(--accent); color:white; border-radius:10px; padding:0 20px; font-size:1.5rem;">+</button>
+                <input type="text" id="shop-input" placeholder="Name...">
+                <button id="btn-add-shop-new" style="background:var(--accent); color:white; border-radius:12px; width:60px; font-size:1.5rem;">+</button>
             </div>
-            <div id="suggestion-box"></div><div id="shopping-items-container"></div>
+            <div id="suggestion-box"></div><div id="shop-list-cont"></div>
         </div>
         <div class="finish-bar">
-            <button class="btn-nav btn-shopping" id="finish-shopping-btn">✅ EINKAUF BEENDEN</button>
-            <button class="btn-danger" id="clear-shopping-btn">Liste leeren</button>
+            <button class="btn-nav btn-shopping" id="btn-finish-shop">✅ EINKAUF BEENDEN</button>
+            <button class="btn-danger" id="btn-clear-shop">Liste leeren</button>
         </div>
     </div>
 
-    <div id="add-page" class="page">
-        <div class="page-header"><h2 id="add-title">Neu anlegen</h2><button onclick="closePage('add-page')">✕</button></div>
+    <div id="page-inventory" class="page">
+        <div class="page-header"><h2>Ablage</h2><button class="btn-close" data-target="page-inventory">Zurück</button></div>
         <div class="page-body">
-            <input type="hidden" id="edit-id"><input type="hidden" id="context-mode">
-            <label>Name</label><input type="text" id="add-name">
+            <button class="btn-nav btn-primary" style="width:100%; margin-bottom:15px;" id="btn-trigger-add">+ Lebensmittel anlegen</button>
+            <button class="btn-nav btn-primary" style="width:100%; background:var(--accent); margin-bottom:15px;" id="btn-trigger-search">🔍 Suchen</button>
+            <button class="btn-nav btn-primary" style="width:100%; background:var(--secondary);" id="btn-trigger-all">📋 Alle (A-Z)</button>
+        </div>
+    </div>
+
+    <div id="page-add" class="page">
+        <div class="page-header"><h2 id="add-title">Eintrag</h2><button class="btn-close" data-target="page-add">✕</button></div>
+        <div class="page-body">
+            <input type="hidden" id="form-id"><input type="hidden" id="form-mode">
+            <label>Name</label><input type="text" id="form-name">
             <div style="display:flex; gap:10px;">
-                <div style="flex:1"><label>Menge</label><input type="number" id="add-qty" value="1"></div>
-                <div style="flex:1"><label>Einheit</label><select id="add-unit"><option>St</option><option>kg</option><option>g</option><option>ml</option><option>l</option></select></div>
+                <div style="flex:1"><label>Menge</label><input type="number" id="form-qty" value="1"></div>
+                <div style="flex:1"><label>Einheit</label><select id="form-unit"><option>St</option><option>kg</option><option>g</option><option>ml</option><option>l</option></select></div>
             </div>
-            <label style="display:flex; align-items:center; gap:10px; margin:15px 0;"><input type="checkbox" id="add-is-fav" style="width:25px; height:25px;"> ⭐ Favorit</label>
-            <label style="display:flex; align-items:center; gap:10px;"><input type="checkbox" id="add-has-limit" id="check-limit" style="width:25px; height:25px;"> ⚠️ Melden bei Knappheit</label>
-            <div id="l-box" style="display:none; margin-top:10px;"><label>Menge <=</label><input type="number" id="add-limit-val"></div>
-            <button class="btn-nav btn-primary" id="save-item-btn" style="width:100%; margin-top:20px;">SPEICHERN</button>
+            <label style="display:flex; align-items:center; gap:15px; margin:20px 0;"><input type="checkbox" id="form-fav" style="width:30px; height:30px;"> ⭐ Favorit</label>
+            <label style="display:flex; align-items:center; gap:15px;"><input type="checkbox" id="form-has-limit" style="width:30px; height:30px;"> ⚠️ Melden bei Knappheit</label>
+            <div id="form-limit-box" style="display:none; margin-top:15px;"><label>Menge <=</label><input type="number" id="form-limit-val"></div>
+            <button class="btn-nav btn-primary" id="btn-save-final" style="width:100%; margin-top:30px; padding:25px;">SPEICHERN</button>
         </div>
     </div>
 
-    <div id="inventory-page" class="page">
-        <div class="page-header"><h2>Ablage</h2><button onclick="closePage('inventory-page')">Zurück</button></div>
-        <div class="page-body">
-            <button class="btn-nav btn-primary" style="width:100%; margin-bottom:15px;" id="btn-new-item">+ Lebensmittel anlegen</button>
-            <button class="btn-nav btn-primary" style="width:100%; background:var(--accent); margin-bottom:15px;" id="btn-open-search">🔍 Lebensmittel suchen</button>
-            <button class="btn-nav btn-primary" style="width:100%; background:var(--secondary);" id="btn-open-all">📋 Alle anzeigen (A-Z)</button>
-        </div>
+    <div id="page-search" class="page">
+        <div class="page-header"><h2>Suche</h2><button class="btn-close" data-target="page-search">Zurück</button></div>
+        <div class="page-body"><input type="text" id="search-input" placeholder="Tippen..."><div id="search-results"></div></div>
     </div>
 
-    <div id="search-page" class="page">
-        <div class="page-header"><h2>Suche</h2><button onclick="closePage('search-page')">Zurück</button></div>
-        <div class="page-body">
-            <input type="text" id="live-search-input" placeholder="Tippen...">
-            <div id="live-search-results"></div>
-        </div>
-    </div>
-
-    <div id="all-list-page" class="page">
-        <div class="page-header"><h2>Gesamtliste</h2><button onclick="closePage('all-list-page')">Schließen</button></div>
-        <div id="all-items-container" class="page-body"></div>
+    <div id="page-all" class="page">
+        <div class="page-header"><h2>Gesamtliste (A-Z)</h2><button class="btn-close" data-target="page-all">Schließen</button></div>
+        <div id="all-list-cont" class="page-body"></div>
     </div>
 </div>
 
 <script>
-    // FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyAOemsGYyQJQl4XgQd_IL2XookAdfkbtk0",
         authDomain: "kuecheninventa.firebaseapp.com",
@@ -125,17 +136,16 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    let items = [], shoppingList = [], recentIds = [];
-    let isWriting = false;
+    let items = [], shoppingList = [], recentIds = [], isWriting = false;
 
-    // CORE SYNC
+    // --- CLOUD SYNC ---
     function sync() {
         isWriting = true;
         items.sort((a,b) => a.name.localeCompare(b.name, 'de'));
         db.ref('kitchen_data').set({ items, shoppingList, recentIds }).then(() => {
-            setTimeout(() => { isWriting = false; }, 500);
+            setTimeout(() => { isWriting = false; }, 800);
         });
-        renderAllViews();
+        updateUI();
     }
 
     db.ref('kitchen_data').on('value', snap => {
@@ -145,72 +155,86 @@
             items = d.items || [];
             shoppingList = d.shoppingList || [];
             recentIds = d.recentIds || [];
-            renderAllViews();
+            updateUI();
         }
     });
 
-    function renderAllViews() {
-        renderHome();
-        renderAllList();
+    function updateUI() {
+        renderList('fav-list', items.filter(i => i.fav));
+        renderList('recent-list', recentIds.map(rid => items.find(i => i.id == rid)).filter(Boolean));
+        renderList('all-list-cont', items, true);
         renderShopping();
-        doLiveSearch();
+        
+        const warnings = items.filter(i => i.limit !== null && i.qty <= i.limit);
+        document.getElementById('warn-tile').style.display = warnings.length ? 'flex' : 'none';
+        document.getElementById('warn-list').innerHTML = warnings.map(i => `<div>• ${i.name} (${i.qty} ${i.unit})</div>`).join('');
     }
 
-    // NAVIGATION
+    // --- NAVIGATION ---
     function openPage(id) { document.getElementById(id).classList.add('active'); }
     function closePage(id) { document.getElementById(id).classList.remove('active'); }
 
-    // EVENT LISTENERS (Statt Inline-Onclick für maximale Stabilität)
-    document.getElementById('nav-shopping').addEventListener('click', () => {
-        // Automatisch knappe Bestände in die Einkaufsliste ziehen
-        const lows = items.filter(i => i.limit !== null && i.qty <= i.limit);
-        lows.forEach(low => {
-            if(!shoppingList.find(s => s.name.toLowerCase() === low.name.toLowerCase())) {
-                shoppingList.push({ id: Date.now() + Math.random(), name: low.name, qty: 1, unit: low.unit || "St", fav: low.fav, limit: low.limit, bought: false });
-            }
-        });
-        sync();
-        openPage('shopping-page');
+    // --- EVENT HANDLER (GLOBAL) ---
+    document.addEventListener('click', e => {
+        const t = e.target;
+        
+        if(t.id === 'btn-go-shop') openPage('page-shopping');
+        if(t.id === 'btn-go-inv') openPage('page-inventory');
+        if(t.classList.contains('btn-close')) closePage(t.dataset.target);
+        
+        if(t.id === 'btn-trigger-add') prepForm('', 'inv');
+        if(t.id === 'btn-trigger-search') openPage('page-search');
+        if(t.id === 'btn-trigger-all') openPage('page-all');
+        if(t.id === 'btn-add-shop-new') prepForm(document.getElementById('shop-input').value, 'shop');
+        
+        if(t.id === 'btn-save-final') saveForm();
+        if(t.id === 'form-has-limit') document.getElementById('form-limit-box').style.display = t.checked ? 'block' : 'none';
+        
+        if(t.id === 'btn-finish-shop') finishShop();
+        if(t.id === 'btn-clear-shop' && confirm('Leeren?')) { shoppingList = []; sync(); }
     });
 
-    document.getElementById('nav-inventory').addEventListener('click', () => openPage('inventory-page'));
-    document.getElementById('btn-new-item').addEventListener('click', () => prepAdd('inv'));
-    document.getElementById('btn-open-search').addEventListener('click', () => openPage('search-page'));
-    document.getElementById('btn-open-all').addEventListener('click', () => openPage('all-list-page'));
-    document.getElementById('add-manual-shop-btn').addEventListener('click', () => prepAdd('shop'));
-    document.getElementById('save-item-btn').addEventListener('click', saveItem);
-    document.getElementById('finish-shopping-btn').addEventListener('click', finishShopping);
-    document.getElementById('clear-shopping-btn').addEventListener('click', () => { if(confirm('Leeren?')) { shoppingList=[]; sync(); }});
-    document.getElementById('add-has-limit').addEventListener('change', e => { document.getElementById('l-box').style.display = e.target.checked ? 'block' : 'none'; });
-
-    function prepAdd(mode) {
-        document.getElementById('edit-id').value = "";
-        document.getElementById('context-mode').value = mode;
-        const nameInput = document.getElementById('manual-shop-name').value;
-        document.getElementById('add-name').value = mode === 'shop' ? nameInput : "";
-        document.getElementById('add-qty').value = "1";
-        document.getElementById('add-unit').value = "St";
-        document.getElementById('add-is-fav').checked = false;
-        document.getElementById('add-has-limit').checked = false;
-        document.getElementById('l-box').style.display = "none";
-        document.getElementById('add-title').innerText = mode === 'shop' ? "Einkauf planen" : "Neu anlegen";
-        openPage('add-page');
+    function prepForm(name, mode, id = '') {
+        document.getElementById('form-id').value = id;
+        document.getElementById('form-mode').value = mode;
+        
+        if(id) {
+            const it = items.find(i => i.id == id);
+            document.getElementById('form-name').value = it.name;
+            document.getElementById('form-qty').value = it.qty;
+            document.getElementById('form-unit').value = it.unit;
+            document.getElementById('form-fav').checked = !!it.fav;
+            document.getElementById('form-has-limit').checked = it.limit !== null;
+            document.getElementById('form-limit-val').value = it.limit || "";
+            document.getElementById('form-limit-box').style.display = it.limit !== null ? 'block' : 'none';
+            document.getElementById('add-title').innerText = "Bearbeiten";
+        } else {
+            document.getElementById('form-name').value = name;
+            document.getElementById('form-qty').value = "1";
+            document.getElementById('form-unit').value = "St";
+            document.getElementById('form-fav').checked = false;
+            document.getElementById('form-has-limit').checked = false;
+            document.getElementById('form-limit-val').value = "";
+            document.getElementById('form-limit-box').style.display = "none";
+            document.getElementById('add-title').innerText = mode === 'shop' ? "Einkauf planen" : "Neu anlegen";
+        }
+        openPage('page-add');
     }
 
-    function saveItem() {
-        const id = document.getElementById('edit-id').value;
-        const mode = document.getElementById('context-mode').value;
-        const name = document.getElementById('add-name').value.trim();
-        const qty = parseFloat(document.getElementById('add-qty').value) || 0;
-        const unit = document.getElementById('add-unit').value;
-        const fav = document.getElementById('add-is-fav').checked;
-        const limit = document.getElementById('add-has-limit').checked ? parseFloat(document.getElementById('add-limit-val').value) : null;
+    function saveForm() {
+        const id = document.getElementById('form-id').value;
+        const mode = document.getElementById('form-mode').value;
+        const name = document.getElementById('form-name').value.trim();
+        const qty = parseFloat(document.getElementById('form-qty').value) || 0;
+        const unit = document.getElementById('form-unit').value;
+        const fav = document.getElementById('form-fav').checked;
+        const limit = document.getElementById('form-has-limit').checked ? parseFloat(document.getElementById('form-limit-val').value) : null;
 
         if(!name) return;
 
-        if(mode === "shop") {
+        if(mode === 'shop') {
             shoppingList.push({ id: Date.now(), name, qty, unit, fav, limit, bought: false });
-            document.getElementById('manual-shop-name').value = "";
+            document.getElementById('shop-input').value = "";
         } else {
             if(id) {
                 const idx = items.findIndex(i => i.id == id);
@@ -220,75 +244,38 @@
             }
         }
         sync();
-        closePage('add-page');
+        closePage('page-add');
     }
 
-    function finishShopping() {
-        const bought = shoppingList.filter(s => s.bought);
-        if(!bought.length) return alert("Nichts abgehakt!");
-        if(confirm("Abgehakte Artikel verbuchen?")) {
-            bought.forEach(b => {
-                const ex = items.find(i => i.name.toLowerCase() === b.name.toLowerCase());
-                if(ex) {
-                    ex.qty = (parseFloat(ex.qty) || 0) + (parseFloat(b.qty) || 0);
-                    ex.fav = b.fav || ex.fav;
-                    ex.limit = (b.limit !== null) ? b.limit : ex.limit;
-                } else {
-                    items.push({ id: Date.now() + Math.random(), name: b.name, qty: b.qty, unit: b.unit, fav: !!b.fav, limit: b.limit });
-                }
-            });
-            shoppingList = shoppingList.filter(s => !s.bought);
-            sync();
-            closePage('shopping-page');
-        }
-    }
-
-    // LIST RENDERING
-    function createRow(item, showDelete = false) {
-        const row = document.createElement('div');
-        row.className = 'item-row';
-        row.innerHTML = `
-            <div class="item-info-btn">
-                <b>${item.name}</b><small>${item.qty} ${item.unit} ${item.fav?'⭐':''}</small>
-            </div>
-            <div class="controls">
-                <button class="btn-minus">-</button><button class="btn-plus">+</button>
-                ${showDelete ? `<button class="btn-del" style="color:red; background:none;">✕</button>` : ''}
-            </div>
-        `;
-        
-        row.querySelector('.item-info-btn').onclick = () => openEdit(item.id);
-        row.querySelector('.btn-minus').onclick = () => updateQty(item.id, -1);
-        row.querySelector('.btn-plus').onclick = () => updateQty(item.id, 1);
-        if(showDelete) row.querySelector('.btn-del').onclick = () => { if(confirm('Löschen?')) { items = items.filter(x => x.id != item.id); sync(); }};
-        
-        return row;
-    }
-
-    function renderHome() {
-        const favCont = document.getElementById('fav-list');
-        favCont.innerHTML = "";
-        items.filter(i => i.fav).forEach(i => favCont.appendChild(createRow(i)));
-        
-        const recCont = document.getElementById('recent-list');
-        recCont.innerHTML = "";
-        recentIds.map(rid => items.find(i => i.id == rid)).filter(Boolean).forEach(i => recCont.appendChild(createRow(i)));
-
-        const warnCont = document.getElementById('warn-list');
-        const warnings = items.filter(i => i.limit !== null && i.qty <= i.limit);
-        document.getElementById('warn-tile').style.display = warnings.length ? 'flex' : 'none';
-        warnCont.innerHTML = warnings.map(i => `<div>• ${i.name} (${i.qty} ${i.unit})</div>`).join('');
-    }
-
-    function renderAllList() {
-        const cont = document.getElementById('all-items-container');
+    // --- LIST RENDERING ---
+    function renderList(containerId, data, showDel = false) {
+        const cont = document.getElementById(containerId);
         if(!cont) return;
         cont.innerHTML = "";
-        items.forEach(i => cont.appendChild(createRow(i, true)));
+        data.forEach(it => {
+            const div = document.createElement('div');
+            div.className = 'item-row';
+            div.innerHTML = `
+                <div class="item-info-clickable"><b>${it.name}</b><small>${it.qty} ${it.unit} ${it.fav?'⭐':''}</small></div>
+                <div class="controls">
+                    <button class="act-min" data-id="${it.id}">-</button>
+                    <button class="act-plus" data-id="${it.id}">+</button>
+                    ${showDel ? `<button class="act-del" data-id="${it.id}" style="background:none; color:red;">✕</button>` : ''}
+                </div>
+            `;
+            
+            // Klicks innerhalb der Zeile
+            div.querySelector('.item-info-clickable').onclick = () => prepForm('', 'inv', it.id);
+            div.querySelector('.act-min').onclick = () => adjustQty(it.id, -1);
+            div.querySelector('.act-plus').onclick = () => adjustQty(it.id, 1);
+            if(showDel) div.querySelector('.act-del').onclick = () => { if(confirm('Löschen?')){ items = items.filter(x => x.id != it.id); sync(); }};
+            
+            cont.appendChild(div);
+        });
     }
 
     function renderShopping() {
-        const cont = document.getElementById('shopping-items-container');
+        const cont = document.getElementById('shop-list-cont');
         if(!cont) return;
         cont.innerHTML = "";
         shoppingList.forEach((s, idx) => {
@@ -298,97 +285,72 @@
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <b>${s.name}</b><input type="checkbox" class="shop-check" ${s.bought?'checked':''}>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-                    <button class="s-minus" style="width:45px; height:45px; border-radius:8px; border:none;">-</button>
-                    <span style="font-weight:bold; align-self:center; min-width:50px; text-align:center;">${s.qty} ${s.unit}</span>
-                    <button class="s-plus" style="width:45px; height:45px; border-radius:8px; border:none;">+</button>
-                    <button class="s-del" style="background:none; border:none; margin-left:10px;">🗑️</button>
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:10px;">
+                    <button class="s-min" style="width:50px; height:50px; border-radius:10px; border:none;">-</button>
+                    <span style="font-weight:bold; align-self:center; min-width:60px; text-align:center; font-size:1.1rem;">${s.qty} ${s.unit}</span>
+                    <button class="s-plus" style="width:50px; height:50px; border-radius:10px; border:none;">+</button>
+                    <button class="s-del" style="background:none; border:none; margin-left:15px; font-size:1.2rem;">🗑️</button>
                 </div>
             `;
             div.querySelector('.shop-check').onchange = () => { shoppingList[idx].bought = !shoppingList[idx].bought; sync(); };
-            div.querySelector('.s-minus').onclick = () => { shoppingList[idx].qty = Math.max(1, (parseFloat(shoppingList[idx].qty)||1)-1); sync(); };
+            div.querySelector('.s-min').onclick = () => { shoppingList[idx].qty = Math.max(1, (parseFloat(shoppingList[idx].qty)||1)-1); sync(); };
             div.querySelector('.s-plus').onclick = () => { shoppingList[idx].qty = (parseFloat(shoppingList[idx].qty)||0)+1; sync(); };
             div.querySelector('.s-del').onclick = () => { shoppingList.splice(idx,1); sync(); };
             cont.appendChild(div);
         });
     }
 
-    function openEdit(id) {
-        const it = items.find(i => i.id == id);
-        if(!it) return;
-        document.getElementById('edit-id').value = it.id;
-        document.getElementById('context-mode').value = "inv";
-        document.getElementById('add-name').value = it.name;
-        document.getElementById('add-qty').value = it.qty;
-        document.getElementById('add-unit').value = it.unit;
-        document.getElementById('add-is-fav').checked = !!it.fav;
-        document.getElementById('add-has-limit').checked = it.limit !== null;
-        document.getElementById('add-limit-val').value = it.limit || "";
-        document.getElementById('l-box').style.display = it.limit !== null ? 'block' : 'none';
-        document.getElementById('add-title').innerText = "Bearbeiten";
-        openPage('add-page');
-    }
-
-    function updateQty(id, delta) {
+    function adjustQty(id, delta) {
         const it = items.find(i => i.id == id);
         if(it) {
-            it.qty = Math.max(0, (parseFloat(it.qty) || 0) + delta);
+            it.qty = Math.max(0, (parseFloat(it.qty)||0) + delta);
             if(delta < 0) recentIds = [id, ...recentIds.filter(r => r != id)].slice(0, 5);
             sync();
         }
     }
 
-    function doLiveSearch() {
-        const v = document.getElementById('live-search-input').value.toLowerCase().trim();
-        const r = document.getElementById('live-search-results');
-        if(!r) return;
-        if(!v) { r.innerHTML = ""; return; }
-        r.innerHTML = "";
-        items.filter(i => i.name.toLowerCase().includes(v)).forEach(i => r.appendChild(createRow(i)));
+    function finishShop() {
+        const bought = shoppingList.filter(s => s.bought);
+        if(!bought.length) return alert("Nichts abgehakt!");
+        if(confirm("Bestand verbuchen?")) {
+            bought.forEach(b => {
+                const ex = items.find(i => i.name.toLowerCase() === b.name.toLowerCase());
+                if(ex) {
+                    ex.qty = (parseFloat(ex.qty)||0) + (parseFloat(b.qty)||0);
+                    ex.fav = b.fav || ex.fav; ex.limit = b.limit !== null ? b.limit : ex.limit;
+                } else {
+                    items.push({ id: Date.now() + Math.random(), name: b.name, qty: b.qty, unit: b.unit, fav: !!b.fav, limit: b.limit });
+                }
+            });
+            shoppingList = shoppingList.filter(s => !s.bought);
+            sync(); closePage('page-shopping');
+        }
     }
-    document.getElementById('live-search-input').onkeyup = doLiveSearch;
 
-    function doSugg(v) {
-        const b = document.getElementById('suggestion-box');
-        if(!v) { b.style.display='none'; return; }
-        const f = items.filter(i => i.name.toLowerCase().includes(v.toLowerCase()));
-        if(!f.length) { b.style.display='none'; return; }
-        b.style.display = 'block';
-        b.innerHTML = "";
+    // --- SUCHE & SUGGESTIONS ---
+    document.getElementById('search-input').onkeyup = () => {
+        const v = document.getElementById('search-input').value.toLowerCase().trim();
+        const res = document.getElementById('search-results');
+        if(!v) { res.innerHTML = ""; return; }
+        renderList('search-results', items.filter(i => i.name.toLowerCase().includes(v)));
+    };
+
+    document.getElementById('shop-input').onkeyup = () => {
+        const v = document.getElementById('shop-input').value.toLowerCase().trim();
+        const box = document.getElementById('suggestion-box');
+        if(!v) { box.style.display = 'none'; return; }
+        const f = items.filter(i => i.name.toLowerCase().includes(v));
+        if(!f.length) { box.style.display = 'none'; return; }
+        box.style.display = 'block'; box.innerHTML = "";
         f.forEach(i => {
-            const d = document.createElement('div');
-            d.className = 'sugg-item';
-            d.innerText = i.name;
+            const d = document.createElement('div'); d.className = 'sugg-item'; d.innerText = i.name;
             d.onclick = () => {
                 shoppingList.push({id:Date.now(), name:i.name, qty:1, unit:i.unit, fav:!!i.fav, limit:i.limit, bought:false});
-                document.getElementById('manual-shop-name').value='';
-                b.style.display='none';
-                sync();
+                document.getElementById('shop-input').value = ""; box.style.display = 'none'; sync();
             };
-            b.appendChild(d);
+            box.appendChild(d);
         });
-    }
-
-    function exportCSV() {
-        let csv = "Name;Bestand;Einheit;Favorit;Limit\n";
-        items.forEach(i => csv += `${i.name};${i.qty};${i.unit};${i.fav?'JA':'NEIN'};${i.limit||'-'}\n`);
-        const blob = new Blob(['\uFEFF'+csv], { type: 'text/csv;charset=utf-8;' });
-        const lnk = document.createElement("a"); lnk.href = URL.createObjectURL(blob); lnk.download = "inventar.csv"; lnk.click();
-    }
-
-    function importCSV(event) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const lines = e.target.result.split(/\r?\n/); const newItems = [];
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue;
-                const cols = lines[i].split(/[;,]/);
-                if (cols.length >= 5) newItems.push({ id: Date.now() + i, name: cols[0].trim(), qty: parseFloat(cols[1]) || 0, unit: cols[2].trim(), fav: cols[3].trim().toUpperCase() === 'JA', limit: cols[4].trim() === '-' ? null : parseFloat(cols[4]) });
-            }
-            if(confirm("Importieren?")) { items = newItems; sync(); }
-        };
-        reader.readAsText(event.target.files[0]);
-    }
+    };
 </script>
 </body>
 </html>
