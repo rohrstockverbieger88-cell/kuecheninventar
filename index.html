@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Küchen-Chef Cloud</title>
+    <title>Küchen-Chef Cloud PRO</title>
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
@@ -144,7 +144,7 @@
 </div>
 
 <script>
-    // --- DEINE FIREBASE KONFIGURATION ---
+    // --- FIREBASE KONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyAOemsGYyQJQl4XgQd_IL2XookAdfkbtk0",
         authDomain: "kuecheninventa.firebaseapp.com",
@@ -180,9 +180,7 @@
             items = data.items || [];
             shoppingList = data.shoppingList || [];
             recentIds = data.recentIds || [];
-            renderHome();
-            renderAll();
-            renderShopping();
+            renderHome(); renderAll(); renderShopping();
         }
     });
 
@@ -223,8 +221,9 @@
         const hasLimit = document.getElementById('add-has-limit').checked;
         const limitVal = hasLimit ? (parseFloat(document.getElementById('add-limit-val').value) || 0) : null;
         if (!name) return;
+
         if (mode === "shopping") {
-            shoppingList.push({ name, qty, unit, fav, limit: limitVal, bought: false });
+            shoppingList.push({ id: "shop-" + Date.now(), name, qty, unit, fav, limit: limitVal, bought: false });
             document.getElementById('manual-shop-name').value = '';
             sync(); openPage('shopping-page');
         } else {
@@ -238,31 +237,35 @@
         }
     }
 
-    function updateQty(id, delta) {
-        const item = items.find(i => i.id == id);
-        if(item) {
-            item.qty = Math.max(0, item.qty + delta);
-            if(delta < 0) recentIds = [parseInt(id), ...recentIds.filter(rid => rid != id)].slice(0, 5);
-            sync();
-        }
-    }
-
     function finishShopping() {
         const boughtItems = shoppingList.filter(s => s.bought);
-        if (boughtItems.length === 0) return alert("Nichts abgehakt!");
-        if (confirm("Bestand aktualisieren?")) {
+        if (boughtItems.length === 0) return alert("Nichts zum Übernehmen abgehakt!");
+        if (confirm(`Einkauf beenden? Bestände werden aktualisiert.`)) {
             boughtItems.forEach(bought => {
                 const existing = items.find(i => i.name.toLowerCase() === bought.name.toLowerCase());
-                if (existing) { existing.qty += bought.qty; existing.fav = bought.fav; existing.limit = bought.limit; } 
-                else { items.push({ id: Date.now() + Math.random(), name: bought.name, qty: bought.qty, unit: bought.unit, fav: bought.fav, limit: bought.limit }); }
+                if (existing) {
+                    existing.qty += bought.qty; existing.fav = bought.fav; existing.limit = bought.limit;
+                } else {
+                    items.push({ id: Date.now() + Math.random(), name: bought.name, qty: bought.qty, unit: bought.unit, fav: bought.fav, limit: bought.limit });
+                }
             });
             shoppingList = shoppingList.filter(s => !s.bought);
             sync(); closePage('shopping-page');
         }
     }
 
+    function updateQty(id, delta) {
+        const item = items.find(i => i.id == id);
+        if(item) {
+            item.qty = Math.max(0, item.qty + delta);
+            if(delta < 0) recentIds = [parseInt(id) || id, ...recentIds.filter(rid => rid != id)].slice(0, 5);
+            sync();
+        }
+    }
+
     // RENDER
     function createRow(item, isAllList = false) {
+        if(!item) return '';
         return `<div class="item-row">
             <button class="item-info-btn" onclick="openEdit('${item.id}')"><b>${item.name}</b><small>${item.qty} ${item.unit} ${item.fav ? '⭐' : ''}</small></button>
             <div class="controls"><button onclick="updateQty('${item.id}', -1)">-</button><button onclick="updateQty('${item.id}', 1)">+</button>
@@ -270,10 +273,10 @@
     }
 
     function renderHome() {
-        document.getElementById('fav-list').innerHTML = items.filter(i => i.fav).map(i => createRow(i)).join('') || 'Keine Favoriten.';
-        const recentItems = recentIds.map(rid => items.find(i => i.id == rid)).filter(Boolean);
+        document.getElementById('fav-list').innerHTML = items.filter(i => i && i.fav).map(i => createRow(i)).join('') || 'Keine Favoriten.';
+        const recentItems = recentIds.map(rid => items.find(i => i && i.id == rid)).filter(Boolean);
         document.getElementById('recent-list').innerHTML = recentItems.map(i => createRow(i)).join('') || 'Keine Aktivität.';
-        const warnings = items.filter(i => i.limit !== null && i.qty <= i.limit);
+        const warnings = items.filter(i => i && i.limit !== null && i.qty <= i.limit);
         const warnTile = document.getElementById('warn-tile');
         if(warnings.length > 0) {
             warnTile.style.display = 'flex';
@@ -281,7 +284,7 @@
         } else { warnTile.style.display = 'none'; }
     }
 
-    function renderAll() { const c = document.getElementById('all-items-container'); if(c) c.innerHTML = items.map(i => createRow(i, true)).join(''); }
+    function renderAll() { const c = document.getElementById('all-items-container'); if(c) c.innerHTML = items.filter(i => i).map(i => createRow(i, true)).join(''); }
 
     function renderShopping() {
         const c = document.getElementById('shopping-items-container'); if(!c) return;
@@ -295,7 +298,6 @@
             <button onclick="updateShopQty(${index}, 1)" style="width:55px; height:45px; border:none; border-radius:10px;">+</button></div></div>`).join('') || '<p style="text-align:center;">Leer.</p>';
     }
 
-    // HELPERS
     function openEdit(id) {
         const item = items.find(i => i.id == id); if(!item) return;
         document.getElementById('edit-id').value = item.id;
@@ -316,13 +318,13 @@
     function clearShoppingList() { if(confirm("Leeren?")) { shoppingList = []; sync(); } }
     function deleteItem(id) { if(confirm('Löschen?')) { items = items.filter(x => x.id != id); sync(); } }
     function openShoppingList() {
-        const lows = items.filter(i => i.limit !== null && i.qty <= i.limit);
+        const lows = items.filter(i => i && i.limit !== null && i.qty <= i.limit);
         lows.forEach(low => { if(!shoppingList.find(s => s.name.toLowerCase() === low.name.toLowerCase())) { shoppingList.push({ name: low.name, qty: 1, unit: low.unit || "St", fav: low.fav, limit: low.limit, bought: false }); } });
         sync(); openPage('shopping-page');
     }
     function showShopSuggestions(val) {
         const s = document.getElementById('shop-suggestions'); if (!val) { s.style.display = 'none'; return; }
-        const f = items.filter(i => i.name.toLowerCase().includes(val.toLowerCase()));
+        const f = items.filter(i => i && i.name.toLowerCase().includes(val.toLowerCase()));
         if (f.length === 0) { s.style.display = 'none'; return; }
         s.innerHTML = f.map(i => `<div class="suggestion-item" onclick="addFromSuggestion('${i.name}', '${i.unit}', ${i.fav}, ${i.limit})">${i.name}</div>`).join('');
         s.style.display = 'block';
@@ -334,12 +336,12 @@
     function doLiveSearch() {
         const v = document.getElementById('live-search-input').value.toLowerCase().trim();
         const r = document.getElementById('live-search-results'); if(!v) { r.innerHTML = ''; return; }
-        r.innerHTML = items.filter(i => i.name.toLowerCase().includes(v)).map(i => createRow(i)).join('');
+        r.innerHTML = items.filter(i => i && i.name.toLowerCase().includes(v)).map(i => createRow(i)).join('');
     }
     function cancelAdd() { if(document.getElementById('context-mode').value === "shopping") openPage('shopping-page'); else closePage('add-page'); }
     function exportCSV() {
         let csv = "Name Lebensmittel;Bestand;Einheit;Favorit;Melden wenn knapp\n";
-        items.forEach(i => csv += `${i.name};${i.qty};${i.unit};${i.fav ? 'JA' : 'NEIN'};${i.limit !== null ? i.limit : '-'}\n`);
+        items.forEach(i => { if(i) csv += `${i.name};${i.qty};${i.unit};${i.fav ? 'JA' : 'NEIN'};${i.limit !== null ? i.limit : '-'}\n` });
         const BOM = '\uFEFF'; const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "inventar.csv"; link.click();
     }
